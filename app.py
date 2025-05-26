@@ -1,4 +1,7 @@
 import os
+import streamlit as st
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
 from openai import OpenAI
 from dotenv import load_dotenv
 from rich.console import Console
