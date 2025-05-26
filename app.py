@@ -1,24 +1,17 @@
-import os
 import streamlit as st
-openai.api_key = st.secrets["OPENAI_API_KEY"]
-
 from openai import OpenAI
-from dotenv import load_dotenv
-from rich.console import Console
-from rich.panel import Panel
-from rich.text import Text
-from rich.markdown import Markdown
 
-# Load API Key
-load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise Exception("❌ OPENAI_API_KEY not found in environment variables!")
+# Load API key from Streamlit Secrets
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-client = OpenAI(api_key=api_key)
-console = Console()
+st.set_page_config(page_title="AI Resume Analyzer & Builder", page_icon="📄")
 
-# === Resume Analyzer ===
+st.title("📄 AI Resume Analyzer & Builder")
+st.markdown("This app analyzes your resume and also helps you generate a professional one.")
+
+st.sidebar.title("Choose Mode")
+mode = st.sidebar.radio("Select what you want to do:", ("Analyze Resume", "Build Resume"))
+
 def analyze_resume(resume_text, job_title=""):
     prompt = f"""
 You are a professional resume reviewer. Analyze the following resume and provide:
@@ -34,85 +27,63 @@ Resume Text:
 
 Job Title Target: {job_title if job_title else "Not specified"}
 
-Give your response in clear headings.
+Respond with clear headings.
 """
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.5,
-        max_tokens=800
+        max_tokens=700
     )
     return response.choices[0].message.content.strip()
 
-# === Resume Builder ===
 def build_resume(name, job_title, experience):
     prompt = f"""
-You are a resume writer. Generate a professional resume for:
+Create a professional resume using the following information:
 
 Name: {name}
 Job Title: {job_title}
 Experience: {experience}
 
-Include the following sections:
-- Name and Title
-- Professional Summary
-- Key Skills
-- Work Experience
-- Education (assume a relevant degree)
-- Contact Info (mock)
+Include:
+- A strong professional summary
+- Key skills
+- Achievements
+- Education (you can add placeholders if not provided)
 
-Format the response cleanly using markdown.
+Format clearly.
 """
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.6,
-        max_tokens=900
+        max_tokens=700
     )
     return response.choices[0].message.content.strip()
 
-# === Display Utilities ===
-def print_header():
-    header = Text()
-    header.append("📄 AI Resume Toolkit\n", style="bold magenta")
-    header.append("Analyze or Build Your Resume with AI\n", style="italic cyan")
-    console.rule(header)
+if mode == "Analyze Resume":
+    st.subheader("🔍 Resume Analyzer")
+    job = st.text_input("Target Job Title (optional):")
+    resume = st.text_area("Paste your resume content here:", height=300)
+    
+    if st.button("Analyze Resume"):
+        if resume.strip():
+            st.info("Analyzing resume...")
+            feedback = analyze_resume(resume, job)
+            st.markdown(feedback)
+        else:
+            st.warning("Please paste your resume first.")
 
-def print_result(content, title="Output"):
-    md = Markdown(content)
-    panel = Panel(md, title=title, border_style="bright_blue")
-    console.print(panel)
+elif mode == "Build Resume":
+    st.subheader("🛠 Resume Builder")
+    name = st.text_input("Your Full Name:")
+    job_title = st.text_input("Job Title:")
+    experience = st.text_area("Briefly describe your experience:", height=200)
 
-# === Main Program ===
-if __name__ == "__main__":
-    print_header()
-    console.print("[bold yellow]Select an option:[/bold yellow]")
-    console.print("[cyan]1.[/cyan] Resume Analyzer")
-    console.print("[cyan]2.[/cyan] Resume Builder")
-
-    choice = console.input("[bold green]Enter 1 or 2: [/bold green] ")
-
-    if choice == "1":
-        job = console.input("\n[bold green]Enter the target job title (optional): [/bold green] ")
-        console.print("\n[bold green]Paste your resume content below (press Enter twice to submit):[/bold green]")
-        lines = []
-        while True:
-            line = input()
-            if line.strip() == "":
-                break
-            lines.append(line)
-        resume_input = "\n".join(lines)
-        console.print("\n[bold yellow]Analyzing your resume...[/bold yellow]")
-        result = analyze_resume(resume_input, job)
-        print_result(result, "Resume Analysis")
-
-    elif choice == "2":
-        name = console.input("\n[bold green]Enter your name: [/bold green] ")
-        job_title = console.input("[bold green]Enter your desired job title: [/bold green] ")
-        experience = console.input("[bold green]Briefly describe your experience: [/bold green] ")
-        console.print("\n[bold yellow]Building your resume...[/bold yellow]")
-        result = build_resume(name, job_title, experience)
-        print_result(result, "Generated Resume")
-
-    else:
-        console.print("[red]Invalid choice. Please restart the program.[/red]")
+    if st.button("Generate Resume"):
+        if name and job_title and experience:
+            st.info("Generating resume...")
+            resume_output = build_resume(name, job_title, experience)
+            st.markdown(resume_output)
+        else:
+            st.warning("Please fill in all fields.")
