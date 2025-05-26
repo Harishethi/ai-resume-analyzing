@@ -4,3 +4,7 @@ pdfplumber
 sentence-transformers
 fpdf
 google-generativeai
+openai
+python-dotenv
+rich
+streamlit
